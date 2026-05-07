@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BusinessCardTR — Dijital NFC Kartvizit</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --black: #080808;
+  --card-bg: #111111;
+  --gold: #c9a96e;
+  --gold2: #e8c99a;
+  --gold-dim: rgba(201,169,110,0.15);
+  --white: #f5f1eb;
+  --muted: #6b6760;
+  --border: rgba(201,169,110,0.12);
+  --border2: rgba(201,169,110,0.25);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 24px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,8,8,0.85);
+  backdrop-filter: blur(20px);
+}
+
+.logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
+.logo span { color: var(--white); font-weight: 300; }
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+nav a:hover { color: var(--gold); }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 120px 48px 80px;
+  gap: 80px;
+  position: relative;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 20%; right: 0;
+  width: 40%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(201,169,110,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-text { position: relative; z-index: 1; }
+
+.hero-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero-eyebrow::before {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.6;
+}
+
+h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(48px, 6vw, 80px);
+  font-weight: 300;
+  line-height: 1.05;
+  margin-bottom: 28px;
+  color: var(--white);
+}
+
+h1 em {
+  font-style: italic;
+  color: var(--gold);
+}
+
+.hero-desc {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 420px;
+  margin-bottom: 48px;
+  font-weight: 300;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--gold);
+  color: #080808;
+  padding: 16px 36px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all 0.3s;
+  cursor: pointer;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.hero-cta:hover {
+  background: var(--gold2);
+  gap: 20px;
+}
+
+.hero-cta svg { width: 16px; height: 16px; }
+
+/* CARD PREVIEW */
+.card-scene {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1200px;
+}
+
+.card-stack {
+  position: relative;
+  width: 340px;
+  height: 210px;
+}
+
+.pvc-card {
+  width: 340px;
+  height: 210px;
+  border-radius: 14px;
+  position: absolute;
+  transition: all 0.6s cubic-bezier(0.22,1,0.36,1);
+  cursor: pointer;
+}
+
+/* KART ÖN YÜZ */
+.card-front {
+  background: #0e0e0e;
+  border: 1px solid rgba(201,169,110,0.2);
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+  transform: rotate(-4deg) translateY(-10px);
+  z-index: 2;
+}
+
+.card-front:hover {
+  transform: rotate(-1deg) translateY(-20px);
+  box-shadow: 0 60px 100px rgba(0,0,0,0.9), 0 0 40px rgba(201,169,110,0.08);
+}
+
+.card-logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-logo-icon {
+  width: 32px; height: 32px;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.card-logo-icon svg { width: 16px; height: 16px; fill: var(--gold); }
+
+.card-brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
+.card-nfc {
+  position: absolute;
+  top: 20px; right: 24px;
+  opacity: 0.3;
+}
+
+.card-nfc svg { width: 22px; height: 22px; fill: var(--gold); }
+
+.card-info { }
+
+.card-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.card-title-text {
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card-line {
+  position: absolute;
+  bottom: 0; left: 32px; right: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.3;
+  bottom: 28px;
+}
+
+/* KART ARKA YÜZ */
+.card-back {
+  background: #0a0a0a;
+  border: 1px solid rgba(201,169,110,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  transform: rotate(3deg) translateY(10px) translateX(20px);
+  z-index: 1;
+}
+
+.card-back-logo {
+  text-align: center;
+  opacity: 0.6;
+}
+
+.card-back-logo .big-icon {
+  width: 48px; height: 48px;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 10px;
+}
+
+.card-back-logo .big-icon svg { width: 24px; height: 24px; fill: var(--gold); }
+
+.card-back-logo span {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+
+/* FEATURES */
+.features {
+  padding: 100px 48px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--border);
+  position: relative;
+  z-index: 1;
+}
+
+.feature {
+  background: var(--black);
+  padding: 48px 40px;
+  transition: background 0.3s;
+}
+
+.feature:hover { background: #0d0d0d; }
+
+.feature-icon {
+  width: 44px; height: 44px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 24px;
+}
+
+.feature-icon svg {
+  width: 20px; height: 20px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.feature h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--white);
+  margin-bottom: 12px;
+}
+
+.feature p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+/* FORM SECTION */
+.form-section {
+  padding: 100px 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.form-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 48px; right: 48px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border2), transparent);
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.section-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 4vw, 56px);
+  font-weight: 300;
+  color: var(--white);
+  line-height: 1.1;
+}
+
+.section-header h2 em { font-style: italic; color: var(--gold); }
+
+.form-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 56px;
+  position: relative;
+}
+
+.form-wrap::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 56px; right: 56px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.5;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group.full { grid-column: 1 / -1; }
+
+.form-group label {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 14px 18px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  transition: border-color 0.2s;
+  outline: none;
+  width: 100%;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--gold);
+  background: rgba(201,169,110,0.04);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder { color: var(--muted); }
+
+.form-group select option { background: #111; color: var(--white); }
+
+.form-group textarea { resize: vertical; min-height: 100px; }
+
+.form-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 32px 0;
+  position: relative;
+}
+
+.form-divider span {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card-bg);
+  padding: 0 16px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 18px;
+  background: var(--gold);
+  color: #080808;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.submit-btn:hover { background: var(--gold2); gap: 20px; }
+.submit-btn svg { width: 16px; height: 16px; fill: none; stroke: #080808; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.form-note {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+/* SUCCESS */
+.success-msg {
+  display: none;
+  text-align: center;
+  padding: 48px;
+}
+
+.success-msg.show { display: block; }
+
+.success-icon {
+  width: 64px; height: 64px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.success-icon svg { width: 28px; height: 28px; fill: none; stroke: var(--gold); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.success-msg h3 { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 300; color: var(--white); margin-bottom: 12px; }
+.success-msg p { font-size: 14px; color: var(--muted); font-weight: 300; }
+
+/* FOOTER */
+footer {
+  padding: 48px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+footer .logo { font-size: 18px; }
+footer p { font-size: 12px; color: var(--muted); font-weight: 300; }
+
+/* ANIMATIONS */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-text > * {
+  animation: fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.hero-eyebrow { animation-delay: 0.1s; }
+h1 { animation-delay: 0.2s; }
+.hero-desc { animation-delay: 0.3s; }
+.hero-cta { animation-delay: 0.4s; }
+
+.card-scene {
+  animation: fadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.3s both;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  nav { padding: 20px 24px; }
+  .hero { grid-template-columns: 1fr; padding: 100px 24px 60px; gap: 60px; }
+  .card-scene { order: -1; }
+  .features { grid-template-columns: 1fr; padding: 60px 24px; }
+  .form-section { padding: 60px 24px; }
+  .form-wrap { padding: 32px 24px; }
+  .form-grid { grid-template-columns: 1fr; }
+  footer { flex-direction: column; gap: 16px; text-align: center; padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Business<span>Card</span>TR</div>
+  <a href="#siparis">Sipariş Ver</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-text">
+    <div class="hero-eyebrow">NFC Dijital Kartvizit</div>
+    <h1>Bir dokunuşla<br><em>her şey</em><br>aktarılır.</h1>
+    <p class="hero-desc">Siyah mat PVC kart, NFC çipi ve kişisel dijital sayfanla tanışma anını unutulmaz kıl. Telefon numarası, e-posta, sosyal medya — tek temas.</p>
+    <a href="#siparis" class="hero-cta">
+      Sipariş Ver
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
+  </div>
+
+  <div class="card-scene">
+    <div class="card-stack">
+
+      <!-- ARKA YÜZ -->
+      <div class="pvc-card card-back">
+        <div class="card-back-logo">
+          <div class="big-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+          </div>
+          <span>BusinessCardTR</span>
+        </div>
+      </div>
+
+      <!-- ÖN YÜZ -->
+      <div class="pvc-card card-front">
+        <div class="card-logo-area">
+          <div class="card-logo-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+          </div>
+          <span class="card-brand">BusinessCardTR</span>
+        </div>
+
+        <div class="card-nfc">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        </div>
+
+        <div class="card-info">
+          <div class="card-name">Seçkin Aydın</div>
+          <div class="card-title-text" style="text-transform:none;letter-spacing:0.1em;font-size:11px;">BUSINESS CARD MANAGER</div>
+        </div>
+
+        <div class="card-line"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="feature">
+    <div class="feature-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+    </div>
+    <h3>Anında paylaşım</h3>
+    <p>Telefonunu yaklaştır, tüm iletişim bilgilerin karşı tarafa geçsin. Uygulama yok, QR okutma yok.</p>
+  </div>
+  <div class="feature">
+    <div class="feature-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    </div>
+    <h3>İstediğin zaman güncelle</h3>
+    <p>Numaran değişti mi? Yeni iş mi kurdun? Dijital sayfanı güncelle, kart hep güncel kalır.</p>
+  </div>
+  <div class="feature">
+    <div class="feature-icon">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    </div>
+    <h3>Her telefonda çalışır</h3>
+    <p>iPhone veya Android fark etmez. NFC destekli tüm telefonlarda sorunsuz açılır.</p>
+  </div>
+</section>
+
+<!-- FORM -->
+<section class="form-section" id="siparis">
+  <div class="section-header">
+    <div class="section-eyebrow">Sipariş Formu</div>
+    <h2>Kartını <em>tasarla,</em><br>biz üretelim.</h2>
+  </div>
+
+  <div class="form-wrap">
+    <form id="orderForm" action="https://formspree.io/f/xkoyzrob" method="POST">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Ad</label>
+          <input type="text" name="ad" placeholder="Seçkin" required>
+        </div>
+        <div class="form-group">
+          <label>Soyad</label>
+          <input type="text" name="soyad" placeholder="Aydın" required>
+        </div>
+        <div class="form-group">
+          <label>Unvan / Pozisyon</label>
+          <input type="text" name="unvan" placeholder="CEO, Kurucu, Satış Müdürü...">
+        </div>
+        <div class="form-group">
+          <label>Şirket Adı</label>
+          <input type="text" name="sirket" placeholder="Şirket adı (opsiyonel)">
+        </div>
+        <div class="form-group">
+          <label>Telefon</label>
+          <input type="tel" name="telefon" placeholder="+90 5xx xxx xx xx" required>
+        </div>
+        <div class="form-group">
+          <label>E-posta</label>
+          <input type="email" name="email" placeholder="ornek@email.com" required>
+        </div>
+        <div class="form-group full">
+          <label>Web Sitesi</label>
+          <input type="url" name="web" placeholder="https://www.siteniz.com">
+        </div>
+        <div class="form-group full">
+          <label>İş Adresi</label>
+          <input type="text" name="adres" placeholder="Mahalle, İlçe, Şehir">
+        </div>
+      </div>
+
+      <div class="form-divider"><span>Sosyal Medya</span></div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>LinkedIn</label>
+          <input type="url" name="linkedin" placeholder="linkedin.com/in/kullanici">
+        </div>
+        <div class="form-group">
+          <label>Instagram</label>
+          <input type="text" name="instagram" placeholder="@kullanici_adi">
+        </div>
+        <div class="form-group">
+          <label>Twitter / X</label>
+          <input type="text" name="twitter" placeholder="@kullanici_adi">
+        </div>
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input type="tel" name="whatsapp" placeholder="+90 5xx xxx xx xx">
+        </div>
+      </div>
+
+      <div class="form-divider"><span>Sipariş Detayı</span></div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Kaç adet?</label>
+          <select name="adet">
+            <option>1 adet</option>
+            <option>5 adet</option>
+            <option selected>10 adet</option>
+            <option>25 adet</option>
+            <option>50 adet</option>
+            <option>100 adet</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>İletişim tercihi</label>
+          <select name="iletisim">
+            <option>WhatsApp</option>
+            <option>E-posta</option>
+            <option>Telefon</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Notlar (opsiyonel)</label>
+          <textarea name="notlar" placeholder="Eklemek istediğin bir şey varsa buraya yaz..."></textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn">
+        Siparişi Gönder
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+      <p class="form-note">Formu gönderdikten sonra seçtiğin kanaldan seninle iletişime geçeceğiz.</p>
+    </form>
+
+    <div class="success-msg" id="successMsg">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>Siparişin alındı!</h3>
+      <p>En kısa sürede seninle iletişime geçeceğiz.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="logo">Business<span>Card</span>TR</div>
+  <p>© 2026 BusinessCardTR — Tüm hakları saklıdır.</p>
+</footer>
+
+<script>
+document.getElementById('orderForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const res = await fetch('https://formspree.io/f/xkoyzrob', {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+    body: new FormData(this)
+  });
+  if (res.ok) {
+    this.style.display = 'none';
+    document.getElementById('successMsg').classList.add('show');
+  } else {
+    alert('Bir hata oluştu, lütfen tekrar deneyin.');
+  }
+});
+</script>
+
+</body>
+</html>
