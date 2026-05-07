@@ -669,35 +669,35 @@ h1 { animation-delay: 0.2s; }
       <div class="form-grid">
         <div class="form-group">
           <label>Ad</label>
-          <input type="text" placeholder="Mustafa" required>
+          <input type="text" name="ad" placeholder="Seçkin" required>
         </div>
         <div class="form-group">
           <label>Soyad</label>
-          <input type="text" placeholder="Kalafat" required>
+          <input type="text" name="soyad" placeholder="Aydın" required>
         </div>
         <div class="form-group">
           <label>Unvan / Pozisyon</label>
-          <input type="text" placeholder="CEO, Kurucu, Satış Müdürü...">
+          <input type="text" name="unvan" placeholder="CEO, Kurucu, Satış Müdürü...">
         </div>
         <div class="form-group">
           <label>Şirket Adı</label>
-          <input type="text" placeholder="Şirket adı (opsiyonel)">
+          <input type="text" name="sirket" placeholder="Şirket adı (opsiyonel)">
         </div>
         <div class="form-group">
           <label>Telefon</label>
-          <input type="tel" placeholder="+90 5xx xxx xx xx" required>
+          <input type="tel" name="telefon" placeholder="+90 5xx xxx xx xx" required>
         </div>
         <div class="form-group">
           <label>E-posta</label>
-          <input type="email" placeholder="ornek@email.com" required>
+          <input type="email" name="email" placeholder="ornek@email.com" required>
         </div>
         <div class="form-group full">
           <label>Web Sitesi</label>
-          <input type="url" placeholder="https://www.siteniz.com">
+          <input type="url" name="web" placeholder="https://www.siteniz.com">
         </div>
         <div class="form-group full">
           <label>İş Adresi</label>
-          <input type="text" placeholder="Mahalle, İlçe, Şehir">
+          <input type="text" name="adres" placeholder="Mahalle, İlçe, Şehir">
         </div>
       </div>
 
@@ -706,19 +706,19 @@ h1 { animation-delay: 0.2s; }
       <div class="form-grid">
         <div class="form-group">
           <label>LinkedIn</label>
-          <input type="url" placeholder="linkedin.com/in/kullanici">
+          <input type="url" name="linkedin" placeholder="linkedin.com/in/kullanici">
         </div>
         <div class="form-group">
           <label>Instagram</label>
-          <input type="text" placeholder="@kullanici_adi">
+          <input type="text" name="instagram" placeholder="@kullanici_adi">
         </div>
         <div class="form-group">
           <label>Twitter / X</label>
-          <input type="text" placeholder="@kullanici_adi">
+          <input type="text" name="twitter" placeholder="@kullanici_adi">
         </div>
         <div class="form-group">
           <label>WhatsApp</label>
-          <input type="tel" placeholder="+90 5xx xxx xx xx">
+          <input type="tel" name="whatsapp" placeholder="+90 5xx xxx xx xx">
         </div>
       </div>
 
@@ -727,7 +727,7 @@ h1 { animation-delay: 0.2s; }
       <div class="form-grid">
         <div class="form-group">
           <label>Kaç adet?</label>
-          <select>
+          <select name="adet">
             <option>1 adet</option>
             <option>5 adet</option>
             <option selected>10 adet</option>
@@ -738,7 +738,7 @@ h1 { animation-delay: 0.2s; }
         </div>
         <div class="form-group">
           <label>İletişim tercihi</label>
-          <select>
+          <select name="iletisim">
             <option>WhatsApp</option>
             <option>E-posta</option>
             <option>Telefon</option>
@@ -746,7 +746,7 @@ h1 { animation-delay: 0.2s; }
         </div>
         <div class="form-group full">
           <label>Notlar (opsiyonel)</label>
-          <textarea placeholder="Eklemek istediğin bir şey varsa buraya yaz..."></textarea>
+          <textarea name="notlar" placeholder="Eklemek istediğin bir şey varsa buraya yaz..."></textarea>
         </div>
       </div>
 
@@ -774,7 +774,21 @@ h1 { animation-delay: 0.2s; }
 </footer>
 
 <script>
-// Formspree handles submission, no preventDefault needed
+document.getElementById('orderForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(this));
+  const res = await fetch('https://formspree.io/f/xkoyzrob', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (res.ok) {
+    this.style.display = 'none';
+    document.getElementById('successMsg').classList.add('show');
+  } else {
+    alert('Bir hata oluştu, lütfen tekrar deneyin.');
+  }
+});
 </script>
 
 </body>
